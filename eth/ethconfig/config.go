@@ -16,7 +16,6 @@
 
 // Package ethconfig contains the configuration of the ETH and LES protocols.
 package ethconfig
-
 import (
 	"math/big"
 	"os"
@@ -24,12 +23,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+  "fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/clique"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
+	"github.com/ethereum/go-ethereum/consensus/pos"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
@@ -214,7 +215,14 @@ type Config struct {
 func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	var engine consensus.Engine
-	if chainConfig.Clique != nil {
+
+  fmt.Println("Pos is configured as consensus engine")
+
+  engine = Pos.New(chainConfig.Pos, db)
+
+  return engine
+
+  if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)
 	} else {
 		switch config.PowMode {
