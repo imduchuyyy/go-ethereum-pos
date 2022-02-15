@@ -70,7 +70,8 @@ var (
 	maxSystemBalance = new(big.Int).Mul(big.NewInt(100), big.NewInt(params.Ether))
 
 	systemContracts = map[common.Address]bool{
-		common.HexToAddress(systemcontracts.ValidatorContract):          true,
+		common.HexToAddress(systemcontracts.StakeContract):          true,
+    /*
 		common.HexToAddress(systemcontracts.SlashContract):              true,
 		common.HexToAddress(systemcontracts.SystemRewardContract):       true,
 		common.HexToAddress(systemcontracts.LightClientContract):        true,
@@ -79,6 +80,7 @@ var (
 		common.HexToAddress(systemcontracts.TokenHubContract):           true,
 		common.HexToAddress(systemcontracts.RelayerIncentivizeContract): true,
 		common.HexToAddress(systemcontracts.CrossChainContract):         true,
+    */
 	}
 )
 
@@ -396,11 +398,6 @@ func (p *Coin98Pos) verifyCascadingFields(chain consensus.ChainHeaderReader, hea
 	}
 
 	snap, err := p.snapshot(chain, number-1, header.ParentHash, parents)
-	if err != nil {
-		return err
-	}
-
-	err = p.blockTimeVerifyForRamanujanFork(snap, header, parent)
 	if err != nil {
 		return err
 	}
