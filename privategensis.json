@@ -1,0 +1,12 @@
+{
+  "config": {
+    "chainId": 15,
+    "homesteadBlock": 0,
+    "coin98pos": {
+    }
+  },
+  "difficulty": "2000000",
+  "gasLimit": "21000000",
+  "alloc": {
+  }
+}

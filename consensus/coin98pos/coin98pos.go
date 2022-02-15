@@ -12,6 +12,7 @@ import (
   "github.com/ethereum/go-ethereum/consensus"
   "github.com/ethereum/go-ethereum/core/types"
   "github.com/ethereum/go-ethereum/common"
+  "github.com/ethereum/go-ethereum/common/worker"
   "github.com/ethereum/go-ethereum/trie"
   "github.com/ethereum/go-ethereum/core/state"
   "github.com/ethereum/go-ethereum/rlp"
@@ -28,11 +29,13 @@ var (
 )
 
 var (
+  errTooManyUncles = errors.New("too many uncles")
 	errInvalidNonce     = errors.New("invalid nonce")
 	errInvalidUncleHash = errors.New("invalid uncle hash")
 )
 
 func New(chainConfig *params.ChainConfig) *Coin98Pos {
+  fmt.Println("coin98pos is configured as consensus engine")
   c := &Coin98Pos{
     chainConfig: chainConfig,
     config: chainConfig.Coin98Pos,
@@ -198,5 +201,30 @@ func (c *Coin98Pos) verifyHeader(chain consensus.ChainHeaderReader, header, pare
 // a results channel to retrieve the async verifications.
 // VerifyHeaders expect the headers to be ordered and continuous.
 func (c *Coin98Pos) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
-  return nil
+  abort := make(chan struct{})
+  results := make(chan error, len(headers))
+
+  worker.Submit(func() {
+		for _, header := range headers {
+      parent := chain.GetHeader(header.ParentHash, header.Number.Uint64() - 1)
+			err := c.verifyHeader(chain, header, parent)
+
+			select {
+			case <-abort:
+				return
+			case results <- err:
+			}
+		}
+	})
+	return abort, results
+}
+
+// VerifyUncles verifies that the given block's uncles conform to the consensus
+// rules of the Ethereum consensus engine.
+func (c *Coin98Pos) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+	// Verify that there is no uncle block. It's explicitly disabled in the beacon
+	if len(block.Uncles()) > 0 {
+		return errTooManyUncles
+	}
+	return nil
 }
