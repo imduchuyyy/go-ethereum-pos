@@ -35,7 +35,6 @@ var (
 )
 
 func New(chainConfig *params.ChainConfig) *Coin98Pos {
-  fmt.Println("coin98pos is configured as consensus engine")
   c := &Coin98Pos{
     chainConfig: chainConfig,
     config: chainConfig.Coin98Pos,
