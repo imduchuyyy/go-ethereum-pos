@@ -133,7 +133,7 @@ func newFreezer(datadir string, namespace string, readonly bool, maxTableSize ui
 
 	// Create the tables.
 	for name, disableSnappy := range tables {
-		table, err := newTable(datadir, name, readMeter, writeMeter, sizeGauge, maxTableSize, disableSnappy, readonly)
+		table, err := newTable(datadir, name, readMeter, writeMeter, sizeGauge, maxTableSize, disableSnappy)
 		if err != nil {
 			for _, table := range freezer.tables {
 				table.Close()
@@ -144,15 +144,8 @@ func newFreezer(datadir string, namespace string, readonly bool, maxTableSize ui
 		freezer.tables[name] = table
 	}
 
-	if freezer.readonly {
-		// In readonly mode only validate, don't truncate.
-		// validate also sets `freezer.frozen`.
-		err = freezer.validate()
-	} else {
-		// Truncate all tables to common length.
-		err = freezer.repair()
-	}
-	if err != nil {
+	// Truncate all tables to common length.
+	if err := freezer.repair(); err != nil {
 		for _, table := range freezer.tables {
 			table.Close()
 		}
@@ -312,33 +305,6 @@ func (f *freezer) Sync() error {
 	if errs != nil {
 		return fmt.Errorf("%v", errs)
 	}
-	return nil
-}
-
-// validate checks that every table has the same length.
-// Used instead of `repair` in readonly mode.
-func (f *freezer) validate() error {
-	if len(f.tables) == 0 {
-		return nil
-	}
-	var (
-		length uint64
-		name   string
-	)
-	// Hack to get length of any table
-	for kind, table := range f.tables {
-		length = atomic.LoadUint64(&table.items)
-		name = kind
-		break
-	}
-	// Now check every table against that length
-	for kind, table := range f.tables {
-		items := atomic.LoadUint64(&table.items)
-		if length != items {
-			return fmt.Errorf("freezer tables %s and %s have differing lengths: %d != %d", kind, name, items, length)
-		}
-	}
-	atomic.StoreUint64(&f.frozen, length)
 	return nil
 }
 

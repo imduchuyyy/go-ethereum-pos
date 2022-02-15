@@ -59,7 +59,8 @@ type callTracer struct {
 func newCallTracer() tracers.Tracer {
 	// First callframe contains tx context info
 	// and is populated on start and end.
-	return &callTracer{callstack: make([]callFrame, 1)}
+	t := &callTracer{callstack: make([]callFrame, 1)}
+	return t
 }
 
 // CaptureStart implements the EVMLogger interface to initialize the tracing operation.

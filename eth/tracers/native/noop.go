@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	register("noopTracer", newNoopTracer)
+	register("noopTracerNative", newNoopTracer)
 }
 
 // noopTracer is a go implementation of the Tracer interface which

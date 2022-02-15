@@ -35,12 +35,10 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-// Backend wraps all methods required for mining. Only full node is capable
-// to offer all the functions here.
+// Backend wraps all methods required for mining.
 type Backend interface {
 	BlockChain() *core.BlockChain
 	TxPool() *core.TxPool
-	StateAtBlock(block *types.Block, reexec uint64, base *state.StateDB, checkLive bool, preferDisk bool) (statedb *state.StateDB, err error)
 }
 
 // Config is the configuration parameters of mining.
@@ -70,7 +68,7 @@ type Miner struct {
 	wg sync.WaitGroup
 }
 
-func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, isLocalBlock func(header *types.Header) bool) *Miner {
+func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, isLocalBlock func(header *types.Header) bool, merger *consensus.Merger) *Miner {
 	miner := &Miner{
 		eth:     eth,
 		mux:     mux,
@@ -78,7 +76,7 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 		exitCh:  make(chan struct{}),
 		startCh: make(chan common.Address),
 		stopCh:  make(chan struct{}),
-		worker:  newWorker(config, chainConfig, engine, eth, mux, isLocalBlock, true),
+		worker:  newWorker(config, chainConfig, engine, eth, mux, isLocalBlock, true, merger),
 	}
 	miner.wg.Add(1)
 	go miner.update()
@@ -233,12 +231,6 @@ func (miner *Miner) EnablePreseal() {
 // which uses this library.
 func (miner *Miner) DisablePreseal() {
 	miner.worker.disablePreseal()
-}
-
-// GetSealingBlock retrieves a sealing block based on the given parameters.
-// The returned block is not sealed but all other fields should be filled.
-func (miner *Miner) GetSealingBlock(parent common.Hash, timestamp uint64, coinbase common.Address, random common.Hash) (*types.Block, error) {
-	return miner.worker.getSealingBlock(parent, timestamp, coinbase, random)
 }
 
 // SubscribePendingLogs starts delivering logs from pending transactions

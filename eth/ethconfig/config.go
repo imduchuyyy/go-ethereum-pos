@@ -6,6 +6,9 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
@@ -13,6 +16,7 @@
 
 // Package ethconfig contains the configuration of the ETH and LES protocols.
 package ethconfig
+
 import (
 	"math/big"
 	"os"
@@ -20,7 +24,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-  "fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -209,19 +212,13 @@ type Config struct {
 }
 
 // CreateConsensusEngine creates a consensus engine for the given chain configuration.
-func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database, genesisHash common.Hash) consensus.Engine {
+func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	var engine consensus.Engine
-
-  fmt.Println("Coin98Pos is configured as consensus engine")
-
-  // use Coin98Pos consensus
-  engine = Coin98Pos.New(chainConfig.Coin98Pos, db, genesisHash)
-
-  return engine
-
-  /*
-  if chainConfig.Clique != nil {
+  if chainConfig.Coin98Pos != nil {
+    engine = coin98pos.New(chainConfig)
+  }
+	if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)
 	} else {
 		switch config.PowMode {
@@ -247,5 +244,4 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 		engine.(*ethash.Ethash).SetThreads(-1) // Disable CPU mining
 	}
 	return beacon.New(engine)
-  */
 }

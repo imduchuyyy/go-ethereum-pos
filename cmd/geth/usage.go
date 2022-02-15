@@ -229,6 +229,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.SnapshotFlag,
 			utils.BloomFilterSizeFlag,
 			cli.HelpFlag,
+			utils.CatalystFlag,
 		},
 	},
 }

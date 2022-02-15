@@ -155,7 +155,8 @@ func (s *Sync) AddSubTrie(root common.Hash, path []byte, parent common.Hash, cal
 	}
 	// If database says this is a duplicate, then at least the trie node is
 	// present, and we hold the assumption that it's NOT legacy contract code.
-	if rawdb.HasTrieNode(s.database, root) {
+	blob := rawdb.ReadTrieNode(s.database, root)
+	if len(blob) > 0 {
 		return
 	}
 	// Assemble the new sub-trie sync request
@@ -192,7 +193,7 @@ func (s *Sync) AddCodeEntry(hash common.Hash, path []byte, parent common.Hash) {
 	// sync is expected to run with a fresh new node. Even there
 	// exists the code with legacy format, fetch and store with
 	// new scheme anyway.
-	if rawdb.HasCodeWithPrefix(s.database, hash) {
+	if blob := rawdb.ReadCodeWithPrefix(s.database, hash); len(blob) > 0 {
 		return
 	}
 	// Assemble the new sub-trie sync request
@@ -400,7 +401,7 @@ func (s *Sync) children(req *request, object node) ([]*request, error) {
 			}
 			// If database says duplicate, then at least the trie node is present
 			// and we hold the assumption that it's NOT legacy contract code.
-			if rawdb.HasTrieNode(s.database, hash) {
+			if blob := rawdb.ReadTrieNode(s.database, hash); len(blob) > 0 {
 				continue
 			}
 			// Locally unknown node, schedule for retrieval

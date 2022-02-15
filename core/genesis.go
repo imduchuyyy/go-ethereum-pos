@@ -294,7 +294,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit
 	}
-	if g.Difficulty == nil && g.Mixhash == (common.Hash{}) {
+	if g.Difficulty == nil {
 		head.Difficulty = params.GenesisDifficulty
 	}
 	if g.Config != nil && g.Config.IsLondon(common.Big0) {

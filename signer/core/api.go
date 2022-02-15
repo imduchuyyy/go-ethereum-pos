@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/ethereum/go-ethereum/signer/storage"
 )
@@ -189,24 +188,23 @@ func StartClefAccountManager(ksLocation string, nousb, lightKDF bool, scpath str
 
 // MetadataFromContext extracts Metadata from a given context.Context
 func MetadataFromContext(ctx context.Context) Metadata {
-	info := rpc.PeerInfoFromContext(ctx)
-
 	m := Metadata{"NA", "NA", "NA", "", ""} // batman
 
-	if info.Transport != "" {
-		if info.Transport == "http" {
-			m.Scheme = info.HTTP.Version
-		}
-		m.Scheme = info.Transport
+	if v := ctx.Value("remote"); v != nil {
+		m.Remote = v.(string)
 	}
-	if info.RemoteAddr != "" {
-		m.Remote = info.RemoteAddr
+	if v := ctx.Value("scheme"); v != nil {
+		m.Scheme = v.(string)
 	}
-	if info.HTTP.Host != "" {
-		m.Local = info.HTTP.Host
+	if v := ctx.Value("local"); v != nil {
+		m.Local = v.(string)
 	}
-	m.Origin = info.HTTP.Origin
-	m.UserAgent = info.HTTP.UserAgent
+	if v := ctx.Value("Origin"); v != nil {
+		m.Origin = v.(string)
+	}
+	if v := ctx.Value("User-Agent"); v != nil {
+		m.UserAgent = v.(string)
+	}
 	return m
 }
 
