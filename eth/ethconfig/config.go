@@ -214,10 +214,10 @@ type Config struct {
 func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	var engine consensus.Engine
-  if chainConfig.Coin98Pos != nil {
+  	if chainConfig.Coin98Pos != nil {
 		log.Info("Using Coin98Pos consensus")
-    engine = coin98pos.New(chainConfig)
-  } else if chainConfig.Clique != nil {
+		engine = coin98pos.New(chainConfig)
+  	} else if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)
 	} else {
 		switch config.PowMode {
