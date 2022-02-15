@@ -209,16 +209,18 @@ type Config struct {
 }
 
 // CreateConsensusEngine creates a consensus engine for the given chain configuration.
-func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
+func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database, genesisHash common.Hash) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	var engine consensus.Engine
 
   fmt.Println("Coin98Pos is configured as consensus engine")
 
-  engine = Coin98Pos.New(chainConfig.Coin98Pos, db)
+  // use Coin98Pos consensus
+  engine = Coin98Pos.New(chainConfig.Coin98Pos, db, genesisHash)
 
   return engine
 
+  /*
   if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)
 	} else {
@@ -245,4 +247,5 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 		engine.(*ethash.Ethash).SetThreads(-1) // Disable CPU mining
 	}
 	return beacon.New(engine)
+  */
 }
