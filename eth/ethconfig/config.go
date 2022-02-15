@@ -216,7 +216,7 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 	// If proof-of-authority is requested, set it up
 	var engine consensus.Engine
   if chainConfig.Coin98Pos != nil {
-    engine = coin98pos.New(chainConfig.Coin98Pos)
+    engine = coin98pos.New(chainConfig)
   }
 	if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)
