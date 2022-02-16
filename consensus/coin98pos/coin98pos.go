@@ -6,38 +6,104 @@ import (
   "io"
   "fmt"
   "errors"
+  "sync"
 
   "github.com/ethereum/go-ethereum/params"
   "github.com/ethereum/go-ethereum/rpc"
   "github.com/ethereum/go-ethereum/consensus"
+  "github.com/ethereum/go-ethereum/consensus/clique"
   "github.com/ethereum/go-ethereum/core/types"
   "github.com/ethereum/go-ethereum/common"
+  "github.com/ethereum/go-ethereum/crypto"
   "github.com/ethereum/go-ethereum/common/worker"
   "github.com/ethereum/go-ethereum/trie"
   "github.com/ethereum/go-ethereum/core/state"
   "github.com/ethereum/go-ethereum/rlp"
+  lru "github.com/hashicorp/golang-lru"
 )
+
+const (
+  inmemorySnapshots = 128 // Number of recent vote snapshots to keep in memory
+  inmemorySignatures = 4096 // Number of recent block signatures to keep in memory
+)
+
+var (
+  epochLength = uint64(900)
+  extraSeal = crypto.SignatureLength
+  coin98posNonce = types.EncodeNonce(0)
+)
+
+type ValidatorNode struct {
+  address common.Address
+  staked *big.Int
+}
 
 type Coin98Pos struct {
   chainConfig *params.ChainConfig
   config *params.Coin98PosConfig
-}
 
-var (
-  coin98posDifficulty = common.Big0
-  coin98posNonce = types.EncodeNonce(0)
-)
+  signer common.Address
+  signFn clique.SignerFn
+  lock sync.RWMutex
+
+  recents *lru.ARCCache
+  signatures *lru.ARCCache
+  validatorSignatures *lru.ARCCache
+  verifiedHeaders *lru.ARCCache
+}
 
 var (
   errTooManyUncles = errors.New("too many uncles")
 	errInvalidNonce     = errors.New("invalid nonce")
 	errInvalidUncleHash = errors.New("invalid uncle hash")
+
+  // ecrecover
+  errMissingSignature = errors.New("extra-data 65 byte suffix signature missing")
 )
 
+// ecrecover extracts the Ethereum account address from a signed header.
+func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, error) {
+	// If the signature's already cached, return that
+	hash := header.Hash()
+	if address, known := sigcache.Get(hash); known {
+		return address.(common.Address), nil
+	}
+	// Retrieve the signature from the header extra-data
+	if len(header.Extra) < extraSeal {
+		return common.Address{}, errMissingSignature
+	}
+	signature := header.Extra[len(header.Extra)-extraSeal:]
+
+	// Recover the public key and the Ethereum address
+	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	if err != nil {
+		return common.Address{}, err
+	}
+	var signer common.Address
+	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+
+	sigcache.Add(hash, signer)
+	return signer, nil
+}
+
 func New(chainConfig *params.ChainConfig) *Coin98Pos {
+  if chainConfig.Coin98Pos.Epoch == 0 {
+    chainConfig.Coin98Pos.Epoch = epochLength
+  }
+
+  recents, _ := lru.NewARC(inmemorySnapshots)
+  signatures, _ := lru.NewARC(inmemorySnapshots)
+  validatorSignatures, _ := lru.NewARC(inmemorySnapshots)
+  verifiedHeaders, _ := lru.NewARC(inmemorySnapshots)
+
   c := &Coin98Pos{
     chainConfig: chainConfig,
     config: chainConfig.Coin98Pos,
+
+    recents: recents,
+    signatures: signatures,
+    validatorSignatures: validatorSignatures,
+    verifiedHeaders: verifiedHeaders,
   }
 
   return c
@@ -53,7 +119,7 @@ func (c *Coin98Pos) APIs(chain consensus.ChainHeaderReader) []rpc.API {
 }
 
 func (c *Coin98Pos) Author(header *types.Header) (common.Address, error) {
-  return header.Coinbase, nil
+  return ecrecover(header, c.signatures)
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
@@ -61,7 +127,7 @@ func (c *Coin98Pos) Author(header *types.Header) (common.Address, error) {
 // given the parent block's time and difficulty.
 func (c *Coin98Pos) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
 	// Transition isn't triggered yet, use the legacy rules for calculation
-	return coin98posDifficulty
+  return common.Big0
 }
 
 func (c *Coin98Pos) Close() error {
@@ -92,7 +158,12 @@ func (c *Coin98Pos) FinalizeAndAssemble(chain consensus.ChainHeaderReader, heade
 // header to conform to the coin98 protocol. The changes are done inline.
 func (c *Coin98Pos) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
 	// Transition isn't triggered yet, use the legacy rules for preparation.
-	header.Difficulty = coin98posDifficulty
+  header.Coinbase = common.Address{}
+  header.Nonce = coin98posNonce
+
+  number := header.Number.Uint64()
+
+  snap, err := c.snapshot(chain, number-1, header.ParentHash, nil)
 	return nil
 }
 
@@ -175,10 +246,6 @@ func (c *Coin98Pos) verifyHeader(chain consensus.ChainHeaderReader, header, pare
 	if header.UncleHash != types.EmptyUncleHash {
 		return errInvalidUncleHash
 	}
-	// Verify the block's difficulty to ensure it's the default constant
-	if coin98posDifficulty.Cmp(header.Difficulty) != 0 {
-		return fmt.Errorf("invalid difficulty: have %v, want %v", header.Difficulty, coin98posDifficulty)
-	}
 	// Verify that the gas limit is <= 2^63-1
 	if header.GasLimit > params.MaxGasLimit {
 		return fmt.Errorf("invalid gasLimit: have %v, max %v", header.GasLimit, params.MaxGasLimit)
@@ -226,4 +293,35 @@ func (c *Coin98Pos) VerifyUncles(chain consensus.ChainReader, block *types.Block
 		return errTooManyUncles
 	}
 	return nil
+}
+
+// Note, the method requires the extra data to be at least 65 bytes, otherwise it
+// panics. This is done to avoid accidentally using both forms (signature present
+// or not), which could be abused to produce different hashes for the same header.
+func sigHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
+		header.MixDigest,
+		header.Nonce,
+	})
+	hasher.Sum(hash[:0])
+	return hash
+}
+
+func SigHash(header *types.Header) (hash common.Hash) {
+	return sigHash(header)
 }
