@@ -216,7 +216,7 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 	var engine consensus.Engine
   	if chainConfig.Coin98Pos != nil {
 		log.Info("Using Coin98Pos consensus")
-		engine = coin98pos.New(chainConfig)
+    engine = coin98pos.New(chainConfig, db)
   	} else if chainConfig.Clique != nil {
 		engine = clique.New(chainConfig.Clique, db)
 	} else {
