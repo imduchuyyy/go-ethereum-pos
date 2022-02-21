@@ -2,17 +2,21 @@
   "config": {
     "chainId": 15,
     "homesteadBlock": 0,
-    "coin98pos": {
-      "period": 5,
-      "epoch": 3000
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "ethash": {
+      "epoch": 5
     }
   },
   "difficulty": "2000000",
   "gasLimit": "21000000",
   "extraData": "0x00000000000000000000000000000000000000000000000000000000000000007df9a875a174b3bc565e6424a0050ebc1b2d1d820000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
   "alloc": {
-    "FE68Bf2E8152EF209eC47189eD16bd2a81b8AE27": {
-      "balance": "100000000"
+    "856C2afd19b368DD38449C751f831FedEa9542fc": {
+      "balance": "10000000000000000000000000000"
     }
   }
 }
