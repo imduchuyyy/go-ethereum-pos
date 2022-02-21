@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.11;
 
 /**
  * @title EnablePayGas
@@ -6,7 +6,7 @@ pragma solidity ^0.6.0;
  * @dev Implementation of the contract enable pay gas.
  */
 contract EnablePayGas {
-  event EnablePayGas(address indexed contract, address indexed payer);
+  event EnablePayGas(address indexed contractAddress, address indexed payer);
 
   mapping(address => bool) enableContracts;
   uint256 _minimumBalance;
