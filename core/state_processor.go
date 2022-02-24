@@ -107,6 +107,7 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
   testContract := common.HexToAddress("0x856C2afd19b368DD38449C751f831FedEa9542fc")
   testMethod := []byte("0x0be3fb78")
   copyState := statedb.Copy()
+  // TODO: wrong hash
   fmt.Printf("Msg", isContractEnablePayGas(copyState, testContract, testMethod))
 
 	// Update the state with pending changes.
