@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/big"
 
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/misc"
@@ -66,7 +67,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		allLogs     []*types.Log
 		gp          = new(GasPool).AddGas(block.GasLimit())
 	)
-  // test check contract enable pay gas
+    // test check contract enable pay gas
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
@@ -104,11 +105,12 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 	if err != nil {
 		return nil, err
 	}
-  testContract := common.HexToAddress("0x856C2afd19b368DD38449C751f831FedEa9542fc")
-  testMethod := []byte("0x0be3fb78")
-  copyState := statedb.Copy()
-  // TODO: wrong hash
-  fmt.Printf("Msg", isContractEnablePayGas(copyState, testContract, testMethod))
+    testContract := common.HexToAddress("0x856C2afd19b368DD38449C751f831FedEa9542fc")
+    testMethod := []byte("0x0be3fb78")
+    copyState := statedb.Copy()
+    // TODO: wrong hash
+
+    fmt.Printf("Msg", isContractEnablePayGas(copyState, testContract, testMethod))
 
 	// Update the state with pending changes.
 	var root []byte

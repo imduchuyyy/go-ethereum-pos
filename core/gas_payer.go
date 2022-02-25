@@ -1,12 +1,13 @@
 package core
 
 import (
-  "math/big"
+    "math/big"
+    "fmt"
 
-  "github.com/ethereum/go-ethereum"
-  "github.com/ethereum/go-ethereum/common"
-  "github.com/ethereum/go-ethereum/core/state"
-  "github.com/ethereum/go-ethereum/crypto"
+    "github.com/ethereum/go-ethereum"
+    "github.com/ethereum/go-ethereum/common"
+    "github.com/ethereum/go-ethereum/crypto"
+    "github.com/ethereum/go-ethereum/core/state"
 )
 
 var (
@@ -28,13 +29,16 @@ func (m callmsg) Gas() uint64               { return m.CallMsg.Gas }
 func (m callmsg) Value() *big.Int           { return m.CallMsg.Value }
 func (m callmsg) Data() []byte              { return m.CallMsg.Data }
 
-func isContractEnablePayGas(copyState *state.StateDB, contractAddr common.Address, method []byte) common.Hash {
+
+func isContractEnablePayGas(copyState *state.StateDB, contractAddr common.Address, method []byte) bool {
     enableSlot := slotEnableGas["isEnable"]
-    enableKeyInMapping := crypto.Keccak256Hash(method, contractAddr.Bytes())
+    slotHash := common.BigToHash(new(big.Int).SetUint64(enableSlot))
+    enableKeyInMapping := crypto.Keccak256Hash(method, crypto.Keccak256Hash(contractAddr.Bytes(), slotHash.Bytes()).Bytes())
 
     enableKey := state.GetLocMappingAtKey(enableKeyInMapping, enableSlot)
 
     isEnable := copyState.GetState(common.EnablePayGas, common.BigToHash(enableKey))
-
-    return isEnable
+    fmt.Printf("is Enable", isEnable.Big())
+    return true
 }
+
