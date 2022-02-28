@@ -31,18 +31,13 @@ func (m callmsg) Data() []byte              { return m.CallMsg.Data }
 
 
 func isContractEnablePayGas(copyState *state.StateDB, contractAddr common.Address, method []byte) bool {
-    fmt.Printf("Contract address", contractAddr, "\n")
-    fmt.Printf("Method", method, "\n")
-
     enableSlot := slotEnableGas["isEnable"]
     slotHash := common.BigToHash(new(big.Int).SetUint64(enableSlot))
-    fmt.Printf("slot hash", slotHash, "\n")
-    enableKeyInMapping := crypto.Keccak256Hash(method, crypto.Keccak256Hash(contractAddr.Bytes(), slotHash.Bytes()).Bytes())
-    fmt.Printf("Key", enableKeyInMapping, "\n")
+    enableKeyInMapping := crypto.Keccak256(method, crypto.Keccak256(contractAddr.Hash().Bytes(), slotHash.Bytes()))
 
     //enableKey := state.GetLocMappingAtKey(enableKeyInMapping, enableSlot)
 
-    isEnable := copyState.GetState(common.EnablePayGas, enableKeyInMapping)
+    isEnable := copyState.GetState(common.EnablePayGas, common.BytesToHash(enableKeyInMapping))
     fmt.Printf("is Enable", isEnable, "\n")
     return true
 }

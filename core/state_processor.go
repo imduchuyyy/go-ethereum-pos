@@ -106,7 +106,7 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 		return nil, err
 	}
     testContract := common.HexToAddress("0x856C2afd19b368DD38449C751f831FedEa9542fc")
-    testMethod := common.FromHex("0x01")
+    testMethod := common.FromHex("0x02")
     copyState := statedb.Copy()
     // TODO: wrong hash
 
