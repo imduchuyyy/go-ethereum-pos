@@ -38,7 +38,7 @@ func isContractEnablePayGas(copyState *state.StateDB, contractAddr common.Addres
     //enableKey := state.GetLocMappingAtKey(enableKeyInMapping, enableSlot)
 
     isEnable := copyState.GetState(common.EnablePayGas, common.BytesToHash(enableKeyInMapping))
-    fmt.Printf("is Enable", isEnable, "\n")
+    fmt.Printf("is Enable", isEnable.Big(), "\n")
     return true
 }
 

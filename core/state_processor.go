@@ -100,17 +100,21 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 	txContext := NewEVMTxContext(msg)
 	evm.Reset(txContext, statedb)
 
+    copyState := statedb.Copy()
+
+    isContractPayGas := false
+    data := msg.Data()
+    if (len(data) > 0 && msg.To() != nil) {
+        method := data[:4]
+        isContractPayGas = isContractEnablePayGas(copyState, *msg.To(), method)
+        fmt.Printf("Msg", isContractPayGas, "\n")
+    }
+
 	// Apply the transaction to the current state (included in the env).
 	result, err := ApplyMessage(evm, msg, gp)
 	if err != nil {
 		return nil, err
 	}
-    testContract := common.HexToAddress("0x856C2afd19b368DD38449C751f831FedEa9542fc")
-    testMethod := common.FromHex("0x02")
-    copyState := statedb.Copy()
-    // TODO: wrong hash
-
-    fmt.Printf("Msg", isContractEnablePayGas(copyState, testContract, testMethod))
 
 	// Update the state with pending changes.
 	var root []byte
