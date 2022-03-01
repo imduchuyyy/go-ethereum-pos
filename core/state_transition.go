@@ -61,6 +61,7 @@ type StateTransition struct {
 	data       []byte
 	state      vm.StateDB
 	evm        *vm.EVM
+    isContractPayGas bool
 }
 
 // Message represents a message sent to a contract.
@@ -157,7 +158,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 }
 
 // NewStateTransition initialises and returns a new state transition object.
-func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
+func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool, isContractPayGas bool) *StateTransition {
 	return &StateTransition{
 		gp:        gp,
 		evm:       evm,
@@ -168,6 +169,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		value:     msg.Value(),
 		data:      msg.Data(),
 		state:     evm.StateDB,
+        isContractPayGas: isContractPayGas,
 	}
 }
 
@@ -178,8 +180,8 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // the gas used (which includes gas refunds) and an error if it failed. An error always
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
-func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, error) {
-	return NewStateTransition(evm, msg, gp).TransitionDb()
+func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool, isContractPayGas bool) (*ExecutionResult, error) {
+	return NewStateTransition(evm, msg, gp, isContractPayGas).TransitionDb()
 }
 
 // to returns the recipient of the message.
@@ -190,7 +192,7 @@ func (st *StateTransition) to() common.Address {
 	return *st.msg.To()
 }
 
-func (st *StateTransition) buyGas() error {
+func (st *StateTransition) buyGas(isContractPayGas bool) error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
 	balanceCheck := mgval
@@ -199,20 +201,30 @@ func (st *StateTransition) buyGas() error {
 		balanceCheck = balanceCheck.Mul(balanceCheck, st.gasFeeCap)
 		balanceCheck.Add(balanceCheck, st.value)
 	}
-	if have, want := st.state.GetBalance(st.msg.From()), balanceCheck; have.Cmp(want) < 0 {
-		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
-	}
+    if isContractPayGas {
+        if have, want := st.state.GetBalance(st.to()), balanceCheck; have.Cmp(want) < 0 {
+            return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.to().Hex(), have, want)
+        }
+    } else {
+        if have, want := st.state.GetBalance(st.msg.From()), balanceCheck; have.Cmp(want) < 0 {
+            return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From().Hex(), have, want)
+        }
+    }
 	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
 		return err
 	}
 	st.gas += st.msg.Gas()
 
 	st.initialGas = st.msg.Gas()
-	st.state.SubBalance(st.msg.From(), mgval)
+    if isContractPayGas {
+	    st.state.SubBalance(st.to(), mgval)
+    } else {
+	    st.state.SubBalance(st.msg.From(), mgval)
+    }
 	return nil
 }
 
-func (st *StateTransition) preCheck() error {
+func (st *StateTransition) preCheck(isContractPayGas bool) error {
 	// Only check transactions that are not fake
 	if !st.msg.IsFake() {
 		// Make sure this transaction's nonce is correct.
@@ -257,7 +269,7 @@ func (st *StateTransition) preCheck() error {
 			}
 		}
 	}
-	return st.buyGas()
+	return st.buyGas(isContractPayGas)
 }
 
 // TransitionDb will transition the state by applying the current message and
@@ -287,7 +299,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
     // 7. if to is contract we check if contract is enable pay gas for user
 
 	// Check clauses 1-3, buy gas if everything is correct
-	if err := st.preCheck(); err != nil {
+	if err := st.preCheck(st.isContractPayGas); err != nil {
 		return nil, err
 	}
 	msg := st.msg
@@ -296,6 +308,8 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.Context.BlockNumber)
 	london := st.evm.ChainConfig().IsLondon(st.evm.Context.BlockNumber)
 	contractCreation := msg.To() == nil
+
+    fmt.Printf("is contract pay gas", st.isContractPayGas, "\n")
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
 	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation, homestead, istanbul)

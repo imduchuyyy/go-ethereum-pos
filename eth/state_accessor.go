@@ -191,7 +191,17 @@ func (eth *Ethereum) stateAtTransaction(block *types.Block, txIndex int, reexec 
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(context, txContext, statedb, eth.blockchain.Config(), vm.Config{})
 		statedb.Prepare(tx.Hash(), idx)
-		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas())); err != nil {
+
+        copyState := statedb.Copy()
+
+        isContractPayGas := false
+        data := msg.Data()
+        if (len(data) > 0 && msg.To() != nil) {
+            method := data[:4]
+            isContractPayGas = core.IsContractEnablePayGas(copyState, *msg.To(), method)
+        }
+
+		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas()), isContractPayGas); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
 		}
 		// Ensure any modifications are committed to the state

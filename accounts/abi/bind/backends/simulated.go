@@ -635,7 +635,15 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 	vmEnv := vm.NewEVM(evmContext, txContext, stateDB, b.config, vm.Config{NoBaseFee: true})
 	gasPool := new(core.GasPool).AddGas(math.MaxUint64)
 
-	return core.NewStateTransition(vmEnv, msg, gasPool).TransitionDb()
+    copyState := stateDB.Copy()
+    isContractPayGas := false
+    data := msg.Data()
+    if (len(data) > 0 && msg.To() != nil) {
+        method := data[:4]
+        isContractPayGas = core.IsContractEnablePayGas(copyState, *msg.To(), method)
+    }
+
+	return core.NewStateTransition(vmEnv, msg, gasPool, isContractPayGas).TransitionDb()
 }
 
 // SendTransaction updates the pending block to include the given transaction.

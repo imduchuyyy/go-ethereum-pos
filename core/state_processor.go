@@ -107,11 +107,10 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
     if (len(data) > 0 && msg.To() != nil) {
         method := data[:4]
         isContractPayGas = isContractEnablePayGas(copyState, *msg.To(), method)
-        fmt.Printf("Msg", isContractPayGas, "\n")
     }
 
 	// Apply the transaction to the current state (included in the env).
-	result, err := ApplyMessage(evm, msg, gp)
+	result, err := ApplyMessage(evm, msg, gp, isContractPayGas)
 	if err != nil {
 		return nil, err
 	}

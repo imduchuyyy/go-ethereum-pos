@@ -2,7 +2,6 @@ package core
 
 import (
     "math/big"
-    "fmt"
 
     "github.com/ethereum/go-ethereum"
     "github.com/ethereum/go-ethereum/common"
@@ -38,7 +37,12 @@ func isContractEnablePayGas(copyState *state.StateDB, contractAddr common.Addres
     //enableKey := state.GetLocMappingAtKey(enableKeyInMapping, enableSlot)
 
     isEnable := copyState.GetState(common.EnablePayGas, common.BytesToHash(enableKeyInMapping))
-    fmt.Printf("is Enable", isEnable.Big(), "\n")
-    return true
+    if isEnable.Big().Cmp(new(big.Int).SetUint64(0)) > 0 {
+        return true
+    }
+    return false
 }
 
+func IsContractEnablePayGas(copyState *state.StateDB, contractAddr common.Address, method []byte) bool {
+    return isContractEnablePayGas(copyState, contractAddr, method)
+}

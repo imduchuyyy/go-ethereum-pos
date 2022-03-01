@@ -931,7 +931,17 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 
 	// Execute the message.
 	gp := new(core.GasPool).AddGas(math.MaxUint64)
-	result, err := core.ApplyMessage(evm, msg, gp)
+
+    copyState := state.Copy()
+
+    isContractPayGas := false
+    data := msg.Data()
+    if (len(data) > 0 && msg.To() != nil) {
+        method := data[:4]
+        isContractPayGas = core.IsContractEnablePayGas(copyState, *msg.To(), method)
+    }
+    
+	result, err := core.ApplyMessage(evm, msg, gp, isContractPayGas)
 	if err := vmError(); err != nil {
 		return nil, err
 	}
@@ -1470,7 +1480,16 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		if err != nil {
 			return nil, 0, nil, err
 		}
-		res, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.Gas()))
+        copyState := statedb.Copy()
+
+        isContractPayGas := false
+        data := msg.Data()
+        if (len(data) > 0 && msg.To() != nil) {
+            method := data[:4]
+            isContractPayGas = core.IsContractEnablePayGas(copyState, *msg.To(), method)
+        }
+
+		res, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.Gas()), isContractPayGas)
 		if err != nil {
 			return nil, 0, nil, fmt.Errorf("failed to apply transaction: %v err: %v", args.toTransaction().Hash(), err)
 		}

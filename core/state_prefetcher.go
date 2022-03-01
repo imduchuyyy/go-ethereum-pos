@@ -88,7 +88,14 @@ func (p *statePrefetcher) Prefetch(block *types.Block, statedb *state.StateDB, c
 func precacheTransaction(msg types.Message, config *params.ChainConfig, gaspool *GasPool, statedb *state.StateDB, header *types.Header, evm *vm.EVM) error {
 	// Update the evm with the new transaction context.
 	evm.Reset(NewEVMTxContext(msg), statedb)
+    copyState := statedb.Copy()
+    isContractPayGas := false
+    data := msg.Data()
+    if (len(data) > 0 && msg.To() != nil) {
+        method := data[:4]
+        isContractPayGas = isContractEnablePayGas(copyState, *msg.To(), method)
+    }
 	// Add addresses to access list if applicable
-	_, err := ApplyMessage(evm, msg, gaspool)
+	_, err := ApplyMessage(evm, msg, gaspool, isContractPayGas)
 	return err
 }

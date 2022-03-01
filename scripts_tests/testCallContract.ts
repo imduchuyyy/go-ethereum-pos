@@ -79,8 +79,9 @@ const callContract = async () => {
 
     const contract: any = new web3.eth.Contract(JSON.parse(abi), contractAddress)
 
-    const data = contract.methods.store(1).encodeABI()
+    const data = contract.methods.store(2).encodeABI()
 
+    console.log(contract)
     const receipt = await sendTransaction({
         from: address,
         data,
@@ -90,5 +91,5 @@ const callContract = async () => {
     console.log(receipt)
 }
 
-// deployContract()
-callContract()
+deployContract()
+// callContract()
