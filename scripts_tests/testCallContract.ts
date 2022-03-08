@@ -6,33 +6,58 @@ const web3: Web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:85
 const privateKey: string = process.env.PRIVATE_KEY ? process.env.PRIVATE_KEY : ""
 const address: string = process.env.ADDRESS ? process.env.ADDRESS : ""
 
-const bytecode: string = "608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100a1565b60405180910390f35b610073600480360381019061006e91906100ed565b61007e565b005b60008054905090565b8060008190555050565b6000819050919050565b61009b81610088565b82525050565b60006020820190506100b66000830184610092565b92915050565b600080fd5b6100ca81610088565b81146100d557600080fd5b50565b6000813590506100e7816100c1565b92915050565b600060208284031215610103576101026100bc565b5b6000610111848285016100d8565b9150509291505056fea2646970667358221220d4dbe87ca9034d34315e9ed83d4d46fe7767b201977764ef3ca5a71de14ba55464736f6c634300080b0033"
+
+const bytecode: string = "608060405234801561001057600080fd5b50336000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555060008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16600073ffffffffffffffffffffffffffffffffffffffff167f342827c97908e5e2f71151c08502a66d44b6f758e3ac2f1de95f02eb95f0a73560405160405180910390a3610356806100db6000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c8063893d20e81461003b578063a6f9dae114610059575b600080fd5b610043610075565b604051610050919061022a565b60405180910390f35b610073600480360381019061006e9190610276565b61009e565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff161461012c576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161012390610300565b60405180910390fd5b8073ffffffffffffffffffffffffffffffffffffffff1660008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff167f342827c97908e5e2f71151c08502a66d44b6f758e3ac2f1de95f02eb95f0a73560405160405180910390a3806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610214826101e9565b9050919050565b61022481610209565b82525050565b600060208201905061023f600083018461021b565b92915050565b600080fd5b61025381610209565b811461025e57600080fd5b50565b6000813590506102708161024a565b92915050565b60006020828403121561028c5761028b610245565b5b600061029a84828501610261565b91505092915050565b600082825260208201905092915050565b7f43616c6c6572206973206e6f74206f776e657200000000000000000000000000600082015250565b60006102ea6013836102a3565b91506102f5826102b4565b602082019050919050565b60006020820190508181036000830152610319816102dd565b905091905056fea264697066735822122044ba9d4dbe71d65ca6287bbba18effad6e330bac05ecd13fbc44f1fdae0cac0b64736f6c634300080b0033"
 const abi: string = `
 [
 	{
 		"inputs": [],
-		"name": "retrieve",
-		"outputs": [
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
+				"indexed": true,
+				"internalType": "address",
+				"name": "oldOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
 			}
 		],
-		"stateMutability": "view",
-		"type": "function"
+		"name": "OwnerSet",
+		"type": "event"
 	},
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "num",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
 			}
 		],
-		"name": "store",
+		"name": "changeOwner",
 		"outputs": [],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getOwner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	}
 ]
@@ -61,15 +86,9 @@ const sendTransaction = async (transactionParameter: any) => {
 }
 
 const deployContract = async () => {
-  const chainId: number = await web3.eth.net.getId();
-  const nonce: number = await web3.eth.getTransactionCount(address);
-
-  const gas = 8000000
-
   const receipt = await sendTransaction({
     from: address,
     data: "0x" + bytecode,
-    gas,
   })
   console.log(receipt)
 }
@@ -91,5 +110,9 @@ const callContract = async () => {
     console.log(receipt)
 }
 
-deployContract()
+//deployContract()
 // callContract()
+const contractAddress: string = "0xA4aC15D64E5d718E03614Fb0DC566d1616E5dc7a"
+
+const contract: any = new web3.eth.Contract(JSON.parse(abi), contractAddress)
+console.log(contract)

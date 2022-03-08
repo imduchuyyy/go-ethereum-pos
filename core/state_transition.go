@@ -192,7 +192,7 @@ func (st *StateTransition) to() common.Address {
 	return *st.msg.To()
 }
 
-func (st *StateTransition) buyGas(isContractPayGas bool) error {
+func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
 	balanceCheck := mgval
@@ -201,7 +201,7 @@ func (st *StateTransition) buyGas(isContractPayGas bool) error {
 		balanceCheck = balanceCheck.Mul(balanceCheck, st.gasFeeCap)
 		balanceCheck.Add(balanceCheck, st.value)
 	}
-    if isContractPayGas {
+    if st.isContractPayGas {
         if have, want := st.state.GetBalance(st.to()), balanceCheck; have.Cmp(want) < 0 {
             return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.to().Hex(), have, want)
         }
@@ -216,7 +216,7 @@ func (st *StateTransition) buyGas(isContractPayGas bool) error {
 	st.gas += st.msg.Gas()
 
 	st.initialGas = st.msg.Gas()
-    if isContractPayGas {
+    if st.isContractPayGas {
 	    st.state.SubBalance(st.to(), mgval)
     } else {
 	    st.state.SubBalance(st.msg.From(), mgval)
@@ -224,7 +224,7 @@ func (st *StateTransition) buyGas(isContractPayGas bool) error {
 	return nil
 }
 
-func (st *StateTransition) preCheck(isContractPayGas bool) error {
+func (st *StateTransition) preCheck() error {
 	// Only check transactions that are not fake
 	if !st.msg.IsFake() {
 		// Make sure this transaction's nonce is correct.
@@ -269,7 +269,7 @@ func (st *StateTransition) preCheck(isContractPayGas bool) error {
 			}
 		}
 	}
-	return st.buyGas(isContractPayGas)
+	return st.buyGas()
 }
 
 // TransitionDb will transition the state by applying the current message and
@@ -299,7 +299,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
     // 7. if to is contract we check if contract is enable pay gas for user
 
 	// Check clauses 1-3, buy gas if everything is correct
-	if err := st.preCheck(st.isContractPayGas); err != nil {
+	if err := st.preCheck(); err != nil {
 		return nil, err
 	}
 	msg := st.msg
@@ -310,6 +310,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	contractCreation := msg.To() == nil
 
     fmt.Printf("is contract pay gas", st.isContractPayGas, "\n")
+	fmt.Printf("msg", msg.From(), "\n")
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
 	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation, homestead, istanbul)
@@ -372,7 +373,11 @@ func (st *StateTransition) refundGas(refundQuotient uint64) {
 
 	// Return ETH for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
-	st.state.AddBalance(st.msg.From(), remaining)
+    if (st.isContractPayGas) {
+	    st.state.AddBalance(st.to(), remaining)
+    } else {
+	    st.state.AddBalance(st.msg.From(), remaining)
+    }
 
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
